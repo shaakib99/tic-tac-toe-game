@@ -3,13 +3,32 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 from game.router import router as game_router
+from database import DB
+import logging
 import uvicorn
 import os
 
 load_dotenv()
 
+logger = logging.getLogger("uvicorn")
 
-app = FastAPI()
+def lifespan(app: FastAPI):
+    # before app start
+
+    # check database connection & create tables if necessary
+    db = DB.get_instance()
+    db.engine.connect()
+    db.Base.metadata.create_all(bind=db.engine)
+    logger.info("Database connection established")
+    yield
+
+    # after app stop
+
+    # close database connection
+    DB.close_db_connection()
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Route dependencies
 routers = [game_router]
