@@ -4,6 +4,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 from game.router import router as game_router
 from database import DB
+from redis_database import RedisDB
 import logging
 import uvicorn
 import os
@@ -20,12 +21,18 @@ def lifespan(app: FastAPI):
     db.engine.connect()
     db.Base.metadata.create_all(bind=db.engine)
     logger.info("Database connection established")
+
+    # check redis connection
+    redis_db = RedisDB.get_db()
+    redis_db.ping()
+    logger.info("Redis connection established")
     yield
 
     # after app stop
 
     # close database connection
     DB.close_db_connection()
+    redis_db.close()
 
 
 app = FastAPI(lifespan=lifespan)

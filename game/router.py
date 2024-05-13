@@ -14,6 +14,6 @@ async def create(data: CreateGameModel):
 async def join(data: CreateGameModel, game_id: Optional[str]) -> dict:
     return gameService.create(data, game_id=game_id)
 
-@router.patch('/{game_id}', status_code=status.HTTP_200_OK,  summary="Update game")
+@router.patch('/{game_id}', status_code=status.HTTP_200_OK, response_model=GameModel, summary="Update game")
 async def update(data: UpdateGameModel, game_id: Optional[str]):
     return {}
