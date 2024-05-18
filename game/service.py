@@ -1,19 +1,17 @@
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from redis import Redis
 from typing import Optional
-from database import DB
-from redis_database import RedisDB
 from .model import CreateGameModel, GameModel, UpdateGameModel
 from .schema import GameSchema
 from datetime import datetime
 import os
+import json
 
-db = DB.get_db()
-redis_db = RedisDB.get_db()
-
-def create(data: CreateGameModel, game_id: Optional[str] = None) -> dict:
+def create(data: CreateGameModel, db:Session, redis_db:Redis, game_id: Optional[str] = None) -> dict:
     game = None
     if game_id is not None:
-        game_exist = db.query(GameSchema).filter(id == game_id).limit(1)
+        game_exist = db.query(GameSchema).filter(GameSchema.id == game_id).limit(1)
 
         if game_exist.count() == 0:
             raise HTTPException(status_code=404, detail="Game not found")
@@ -21,11 +19,15 @@ def create(data: CreateGameModel, game_id: Optional[str] = None) -> dict:
             raise HTTPException(status_code=400, detail="Game is over")
         if game_exist.first().player1 is not None and game_exist.first().player2 is not None:
             raise HTTPException(status_code=400, detail="Game is full")
+        if redis_db.hexists(f"GAME_{game_id}", "data") == False:
+            raise HTTPException(status_code=404, detail="Game has expired")    
         
         game = game_exist.first()
-    
+        game.player2 = data.player
+
     if game is None:
-        game = GameSchema(**data.model_dump())
+        game = GameSchema(**data.model_dump(exclude=['player']))
+        game.player1 = data.player
 
     game.player1_symbol = 'X'
     game.player2_symbol = 'O'
@@ -37,40 +39,41 @@ def create(data: CreateGameModel, game_id: Optional[str] = None) -> dict:
         game.status = 'CREATE'
     
     game.updated_at = datetime.now().__str__()
-    game.updated_by = data.player2
-    game.created_by = game.player1 or data.player1
+    game.updated_by = data.player
+    game.created_by = game.player1 or data.player
     db.add(game)
     db.commit()
     gameModel = GameModel.model_validate(game, from_attributes=True, strict=False)
     gameModel.board = ['', '', ''], ['', '', ''], ['', '', '']
 
     # add to redis
-    redis_db.set(f"GAME_{game_id}", gameModel.model_dump(), os.getenv('GAME_EXPIRE', 30)) # game expires in 30 seconds
+    redis_db.hset(f"GAME_{game.id}", "data", json.dumps(gameModel.model_dump())) # game expires in 30 seconds
 
     return gameModel.model_dump()
 
-def update(data: UpdateGameModel, game_id: str):
-    game = GameModel.model_validate_json(redis_db.get(f"GAME_{game_id}"))
+def update(update_data: UpdateGameModel, game_id: str, db:Session, redis_db:Redis):
+    data = UpdateGameModel.model_validate(update_data, from_attributes=True, strict=False)
+    if db.query(GameSchema).filter(GameSchema.id == game_id).first() == None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if redis_db.hexists(f"GAME_{game_id}", "data") == False:
+        raise HTTPException(status_code=404, detail="Game has expired")
+    
+    game_data = redis_db.hget(f"GAME_{game_id}", "data").decode('utf-8').replace("'", '"')
+    game = GameModel.model_validate(json.loads(game_data), from_attributes=True, strict=False)
+
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
-    if game.turn == data.turn:
+    if game.turn != data.turn:
         raise HTTPException(status_code=400, detail="It's not your turn")
     if game.is_over:
         raise HTTPException(status_code=400, detail="Game is over")
     if len(data.move) != 2: 
         raise HTTPException(status_code=400, detail="Invalid move")
-    if 0 < data.move[0] <  2 or 0 < data.move[1] <  2:
+    if 0 > data.move[0]  or data.move[0] >  2 or 0 > data.move[1] or data.move[1]    >  2:
         raise HTTPException(status_code=400, detail="Invalid move") 
-
-
-    if game is None:
-        game.status = "EXPIRED"
-        db.add(game)
-        db.commit()
-        raise HTTPException(status_code=404, detail="Game has been expired")
+    if game.player1 != data.turn and game.player2 != data.turn:
+        raise HTTPException(status_code=400, detail="It's not your turn")
     
-    game.id = game.id
-
     board = game.board
     
     if board[data.move[0]][data.move[1]] != '':
@@ -112,6 +115,7 @@ def update(data: UpdateGameModel, game_id: str):
     else:
         game.is_over = False
         game.is_draw = False
+        game.status = 'IN_PROGRESS'
         game.turn = game.player2 if data.turn == game.player1 else game.player1
     
     game.updated_at = datetime.now().__str__()
@@ -119,8 +123,9 @@ def update(data: UpdateGameModel, game_id: str):
     game.board = board
 
     if game.is_over:
-        db.add(GameSchema(**game.model_dump()))
+        GameSchema(**game.model_dump(exclude=['board', 'move']))
         db.commit()
 
-    redis_db.set(f"GAME_{game_id}", game.model_dump(), os.getenv('GAME_EXPIRE', 30)) # game expires in 30 seconds
+    redis_db.hset(f"GAME_{game_id}","data", json.dumps(game.model_dump()))
+    redis_db.expire(f"GAME_{game_id}", 30)
     return game.model_dump()

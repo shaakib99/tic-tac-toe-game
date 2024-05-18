@@ -23,12 +23,11 @@ class GameModel(BaseModel):
         from_attributes = True
 
 class CreateGameModel(BaseModel):
-    player1: Optional[str] = None
-    player2: Optional[str] = None
+    player: Optional[str] = None
 
 class UpdateGameModel(BaseModel):
     turn: str
-    move: List[int]
+    move: List
 
 
 

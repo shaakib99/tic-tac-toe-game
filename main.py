@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from dotenv import load_dotenv
 from game.router import router as game_router
@@ -40,20 +41,13 @@ app = FastAPI(lifespan=lifespan)
 # Route dependencies
 routers = [game_router]
 
-# Middleware dependecies
-middlewares = []
-
-
 for router in routers:
     app.include_router(router)
 
 # Default middlewares
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"],allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-# add custom middleware
-for mw in middlewares:
-    app.add_middleware(mw)
 
 # start app
 if __name__ == "__main__":
