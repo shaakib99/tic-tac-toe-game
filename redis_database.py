@@ -16,10 +16,3 @@ class RedisDB:
         if RedisDB.instance is None:
             RedisDB.instance = RedisDB()
         return RedisDB.instance
-    
-    def subscribe_to_expirations(self):
-        pubsub = self.redis.pubsub()
-
-        # Subscribe to the keyevent@0__:expired channel
-        pubsub.subscribe(**{'__keyevent@0__:expired': lambda x: print(x)})
-        pubsub.run_in_thread(sleep_time=0.001)
