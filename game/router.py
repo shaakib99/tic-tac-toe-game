@@ -33,6 +33,7 @@ async def update_game(websocket: WebSocket, game_id: str, db = Depends(DB.get_db
         except HTTPException as httpex:
             message = httpex.detail
             await connectionManger.send_personal_message({"error": message}, websocket)
+            break
         except Exception as e:
             if websocket.client_state.name not in ( "DISCONNECTED", "CONNECTING"): 
                  await connectionManger.send_personal_message({"error": e.__str__()}, websocket)

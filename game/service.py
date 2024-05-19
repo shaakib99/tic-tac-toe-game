@@ -69,7 +69,7 @@ def update(update_data: UpdateGameModel, game_id: str, db:Session, redis_db:Redi
         raise HTTPException(status_code=400, detail="Game is over")
     if len(data.move) != 2: 
         raise HTTPException(status_code=400, detail="Invalid move")
-    if 0 > data.move[0]  or data.move[0] >  2 or 0 > data.move[1] or data.move[1]    >  2:
+    if 0 > data.move[0]  or data.move[0] >  2 or 0 > data.move[1] or data.move[1]  >  2:
         raise HTTPException(status_code=400, detail="Invalid move") 
     if game.player1 != data.turn and game.player2 != data.turn:
         raise HTTPException(status_code=400, detail="It's not your turn")
@@ -122,9 +122,11 @@ def update(update_data: UpdateGameModel, game_id: str, db:Session, redis_db:Redi
     game.updated_by = data.turn
     game.board = board
 
-    if game.is_over:
-        GameSchema(**game.model_dump(exclude=['board', 'move']))
-        db.commit()
+    game_record = db.query(GameSchema).filter_by(id=game.id).first()
+    for key, value in game.model_dump().items():
+        setattr(game_record, key, value)
+
+    db.commit()
 
     redis_db.hset(f"GAME_{game_id}","data", json.dumps(game.model_dump()))
     redis_db.expire(f"GAME_{game_id}", 30)
