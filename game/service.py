@@ -113,7 +113,7 @@ def update(update_data: UpdateGameModel, game_id: str, db:Session, redis_db:Redi
         game.is_draw = False
     elif board[0][0] != '' and board[0][1] != '' and board[0][2] != '' and board[1][0] != '' and board[1][1] != '' and board[1][2] != '' and board[2][0] != '' and board[2][1] != '' and board[2][2] != '':
         game.is_draw = True
-        game.isOver = True
+        game.is_over = True
         game.status = 'FINISH'
         game.winner = None
     else:
@@ -133,6 +133,6 @@ def update(update_data: UpdateGameModel, game_id: str, db:Session, redis_db:Redi
     db.commit()
 
     redis_db.hset(f"GAME_{game_id}","data", json.dumps(game.model_dump()))
-    redis_db.expire(f"GAME_{game.id}", int(os.getenv("GAME_EXPIRE_TIME"), 60))
+    redis_db.expire(f"GAME_{game.id}", int(os.getenv("GAME_EXPIRE_TIME", "60")))
 
     return game.model_dump()
