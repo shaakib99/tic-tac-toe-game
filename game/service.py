@@ -51,7 +51,7 @@ def create(data: CreateGameModel, db:Session, redis_db:Redis, game_id: Optional[
 
     # add to redis
     redis_db.hset(f"GAME_{game.id}", "data", json.dumps(gameModel.model_dump()))
-    redis_db.expire(f"GAME_{game.id}", int(os.getenv("GAME_EXPIRE_TIME", 60)))
+    # redis_db.expire(f"GAME_{game.id}", int(os.getenv("GAME_EXPIRE_TIME", "60")))
 
     return gameModel.model_dump()
 
@@ -133,6 +133,6 @@ def update(update_data: UpdateGameModel, game_id: str, db:Session, redis_db:Redi
     db.commit()
 
     redis_db.hset(f"GAME_{game_id}","data", json.dumps(game.model_dump()))
-    redis_db.expire(f"GAME_{game.id}", int(os.getenv("GAME_EXPIRE_TIME", "60")))
+    # redis_db.expire(f"GAME_{game.id}", int(os.getenv("GAME_EXPIRE_TIME", "60")))
 
     return game.model_dump()

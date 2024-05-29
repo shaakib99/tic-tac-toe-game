@@ -9,7 +9,7 @@ class DB:
     session = None
     Base = None
     def __init__(self):
-        self.engine = create_engine(os.getenv("DATABASE_URL", 'mysql://root:root@localhost:3306/tic_tac_toe_dev'))
+        self.engine = create_engine(os.getenv("DB_CONNECTION"))
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.Base = declarative_base()
         self.Base.metadata.create_all(bind=self.engine)
