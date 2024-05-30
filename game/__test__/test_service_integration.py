@@ -1,6 +1,6 @@
 from game.service import create, update
 from game.__test__.test_mock_data import mock_game_model_dict, mock_game_schema_dict, mock_db, mock_redis
-from game.model import CreateGameModel
+from game.model import CreateGameModel, UpdateGameModel
 from game.schema import GameSchema
 from database import DB
 from redis_database import RedisDB
@@ -48,3 +48,31 @@ def test_create(mock_db, mock_redis):
     # exist =  mock_redis.hexists(f"GAME_{game["id"]}", "data")
     # assert exist == True
 
+def test_join(mock_db, mock_redis):
+    game = create(CreateGameModel(player=mock_game_model_dict["player1"]), mock_db, mock_redis, None)
+    game = create(CreateGameModel(player=mock_game_model_dict["player2"]), mock_db, mock_redis, game_id=game["id"])
+    assert game["player1"] == mock_game_model_dict["player1"]
+    assert game["player2"] == mock_game_model_dict["player2"]
+    assert game["player1_symbol"] == mock_game_model_dict["player1_symbol"]
+    assert game["player2_symbol"] == mock_game_model_dict["player2_symbol"]
+    assert game["status"] == "INIT"
+    assert game["turn"] == mock_game_model_dict["player1"]
+    assert game["is_over"]== mock_game_model_dict["is_over"]
+    assert game["is_draw"] == mock_game_model_dict["is_draw"]
+    assert game["created_by"] == mock_game_model_dict["created_by"]
+    assert game["updated_by"] == mock_game_model_dict["player2"]
+
+    game_exist = mock_db.query(GameSchema).filter(GameSchema.id == game["id"]).limit(1)
+    assert game_exist.count() == 1
+
+def test_update(mock_db, mock_redis):
+    game = create(CreateGameModel(player=mock_game_model_dict["player1"]), mock_db, mock_redis, None)
+    game = create(CreateGameModel(player=mock_game_model_dict["player2"]), mock_db, mock_redis, game["id"])
+    update_game = update(UpdateGameModel(turn=mock_game_model_dict["player1"], move=[0,0]), game["id"], mock_db, mock_redis)
+    assert update_game["board"][0][0] == mock_game_model_dict['player1_symbol']
+    assert update_game["turn"] == mock_game_model_dict["player2"]
+    assert update_game["status"] == "IN_PROGRESS"
+    assert update_game["is_over"] == mock_game_model_dict["is_over"]
+    assert update_game["is_draw"] == mock_game_model_dict["is_draw"]
+    assert update_game["updated_by"] == mock_game_model_dict["player1"]
+    assert update_game["created_by"] == mock_game_model_dict["player1"]
