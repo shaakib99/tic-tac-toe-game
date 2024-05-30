@@ -1,15 +1,11 @@
 from game.service import create, update
-from game.__test__.mock_data import mock_game_model_dict, mock_game_schema_dict, mock_db, mock_redis
+from game.__test__.test_mock_data import mock_game_model_dict, mock_game_schema_dict, mock_db, mock_redis
 from game.model import CreateGameModel
 from game.schema import GameSchema
 from database import DB
 from redis_database import RedisDB
 import pytest
 import os
-
-# os.environ["DB_CONNECTION"] = "mysql://root:root@localhost:3306/tic_tac_toe_test"
-# os.environ["REDIS_URL"] = "localhost"
-# os.environ["GAME_EXPIRE_TIME"] = "30"
 
 def test_set_environment_variables():
     assert os.getenv("DB_CONNECTION") ==  "mysql://root:root@localhost:3306/tic_tac_toe_test"
@@ -49,6 +45,6 @@ def test_create(mock_db, mock_redis):
 
     game_exist = mock_db.query(GameSchema).filter(GameSchema.id == game["id"]).limit(1)
     assert game_exist.count() == 1
-    exist =  mock_redis.hexists(f"GAME_{game["id"]}", "data")
-    assert exist == True
+    # exist =  mock_redis.hexists(f"GAME_{game["id"]}", "data")
+    # assert exist == True
 

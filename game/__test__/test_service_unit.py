@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from game.model import GameModel, CreateGameModel, UpdateGameModel
 from game.schema import GameSchema
 from game.service import create, update
-from game.__test__.mock_data import mock_game_schema_dict, mock_game_model_dict, mock_db, mock_redis, mock_create_game_data
+from game.__test__.test_mock_data import mock_game_schema_dict, mock_game_model_dict, mock_db, mock_redis, mock_create_game_data
 import os
 import json
 
