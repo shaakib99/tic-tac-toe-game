@@ -1,5 +1,8 @@
 import redis
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 class RedisDB:
     instance = None
